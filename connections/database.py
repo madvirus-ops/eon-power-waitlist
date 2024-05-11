@@ -25,12 +25,14 @@ Base = declarative_base()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_db():
-    """ensures the database connection is always closed
-    to use this we have to use fastapi.Depends() as an argument in the routes
-    """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# def get_db():
+#     db = SessionLocal()
+#     try:
+#         yield db
+#     finally:
+#         db.close()
+
+
+def get_session():
+    with Session(engine) as session:
+        yield session

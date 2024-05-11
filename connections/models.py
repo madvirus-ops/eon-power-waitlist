@@ -16,7 +16,7 @@ class AbstractModel(SQLModel):
     """abstract model"""
 
     pkid: int = Field(primary_key=True)
-    id: str = Field(default=uuid.uuid4, unique=True, index=True)
+    id: str = Field(default=uuid.uuid4(), unique=True, index=True)
     created_at: datetime = Field(default=datetime.now(tz))
     updated_at: datetime = Field(default=datetime.now(tz))
 

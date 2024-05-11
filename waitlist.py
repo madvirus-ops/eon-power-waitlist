@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Depends, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware import Middleware
-from connections.database import get_db
+from connections.database import get_session
 from connections.models import WebWaitList
-from sqlmodel import Session,select
+from sqlmodel import Session, select, SQLModel
+from typing import Optional
 from pydantic import BaseModel, EmailStr, ValidationError
 
 middleware = [
@@ -27,47 +28,45 @@ app = FastAPI(
 )
 
 
-
-class Waitlist(BaseModel):
+class Waitlist(SQLModel):
     email: EmailStr
-    name: str | None
-
-
+    name: Optional[str] = None
 
 
 @app.get("/")
 def health_check():
-    return {"message":"All the way up!"}
-    
+    return {"message": "All the way up!"}
 
 
 @app.post("/waitlist")
 async def submit_waitlist(
-    body: Waitlist, response: Response, db: Session = Depends(get_db)
+    body: Waitlist, response: Response, db: Session = Depends(get_session)
 ):
     try:
-        
-        statement = (
-            select(WebWaitList)
-            .filter(WebWaitList.email == body.email.lower())
-        )
-        check = db.exec(statement).one()
+
+        statement = select(WebWaitList).filter(WebWaitList.email == body.email.lower())
+        check = db.exec(statement).first()
 
         if check:
             response.status_code = 200
             return {"success": True, "message": "submitted successfully"}
-        
-        db.add(WebWaitList(name=body.name, email=body.email.lower()))
+
+        new = WebWaitList(
+            **body.model_dump(exclude_unset=True),
+        )
+
+        db.add(new)
         db.commit()
 
         response.status_code = 200
         return {"success": True, "message": "submitted successfully"}
-    
+
     except ValidationError as a:
         response.status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         return {"success": False, "message": a.with_traceback()}
-    
+
     except Exception as e:
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         print(e.args)
         return {"success": False, "message": "Internal Server Error"}
+        # raise e
